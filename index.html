@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Chamada Acadêmica</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans antialiased">
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 hidden max-w-xs bg-gray-900 text-white text-sm px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 transition-opacity">
+        <i id="toast-icon" class="ph ph-info text-lg"></i>
+        <span id="toast-msg">Mensagem</span>
+    </div>
+
+    <!-- TELA DE LOGIN (SEM OPÇÃO DE REGISTRO) -->
+    <div id="screen-auth" class="flex min-h-screen items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-xl shadow-md p-8 border border-gray-200">
+            <div class="text-center mb-6">
+                <div class="inline-flex p-3 rounded-full bg-blue-50 text-blue-600 mb-2">
+                    <i class="ph ph-user-check text-3xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">Sistema de Chamada</h1>
+                <p class="text-sm text-gray-500 mt-1">Acesso Restrito ao Professor</p>
+            </div>
+
+            <form id="form-login" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input type="email" id="login-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" placeholder="professor@faculdade.edu.br">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                    <input type="password" id="login-senha" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" placeholder="••••••••">
+                </div>
+                <button type="submit" id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm shadow">
+                    <i class="ph ph-sign-in text-lg"></i> Entrar no Sistema
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL (DASHBOARD) -->
+    <div id="screen-dashboard" class="hidden min-h-screen flex flex-col">
+        <!-- NAVBAR -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="ph ph-notebook text-2xl text-blue-600"></i>
+                    <span class="font-bold text-lg text-gray-900">Chamada Acadêmica</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="user-display-email" class="text-xs font-medium bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full border border-gray-200"></span>
+                    <button id="btn-logout" class="text-sm font-medium text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors">
+                        <i class="ph ph-sign-out text-base"></i> Sair
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- COLUNA ESQUERDA: LISTA DE TURMAS E ADICIONAR TURMA -->
+            <section class="space-y-6">
+                <!-- FORMULÁRIO DE NOVA TURMA -->
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <h2 class="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <i class="ph ph-plus-circle text-blue-600"></i> Criar Nova Turma
+                    </h2>
+                    <form id="form-criar-turma" class="flex gap-2">
+                        <input type="text" id="input-nome-turma" required placeholder="Ex: Engenharia de Software 2026" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Criar</button>
+                    </form>
+                </div>
+
+                <!-- SELETOR DE TURMAS -->
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <h2 class="text-base font-semibold text-gray-900 mb-3">Minhas Turmas</h2>
+                    <div id="lista-turmas" class="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                        <p class="text-sm text-gray-500 italic">Carregando turmas...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COLUNA DIREITA (2 COLS): DETALHES DA TURMA, ALUNOS E HISTÓRICO -->
+            <section class="md:col-span-2 space-y-6">
+                
+                <!-- TELA DE BOAS VINDAS QUANDO NENHUMA TURMA ESTÁ SELECIONADA -->
+                <div id="view-empty" class="bg-white p-12 rounded-xl border border-gray-200 text-center shadow-sm">
+                    <i class="ph ph-users-three text-5xl text-gray-300 mb-3 block"></i>
+                    <h3 class="text-lg font-semibold text-gray-700">Nenhuma turma selecionada</h3>
+                    <p class="text-sm text-gray-500 mt-1">Crie uma turma ou selecione uma existente ao lado para gerenciar alunos e realizar a chamada.</p>
+                </div>
+
+                <!-- SEÇÃO ATIVA DA TURMA -->
+                <div id="view-turma" class="hidden space-y-6">
+                    
+                    <!-- CABEÇALHO DA TURMA SELECIONADA -->
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 id="turma-titulo" class="text-xl font-bold text-gray-900">--</h2>
+                            <p class="text-xs text-gray-500 mt-1">Marque a presença dos alunos e clique em finalizar para salvar.</p>
+                        </div>
+                        <button id="btn-excluir-turma" class="text-xs text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 transition-colors flex items-center gap-1">
+                            <i class="ph ph-trash"></i> Excluir Turma
+                        </button>
+                    </div>
+
+                    <!-- GERENCIAR ALUNOS (ADICIONAR) -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-800 mb-3">Adicionar Aluno à Turma</h3>
+                        <form id="form-adicionar-aluno" class="flex gap-2">
+                            <input type="text" id="input-nome-aluno" required placeholder="Nome completo do aluno" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Adicionar Aluno</button>
+                        </form>
+                    </div>
+
+                    <!-- LISTA DE ALUNOS COM CHECKBOX DE PRESENÇA E CONTADOR DE FALTAS -->
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4 border-b pb-3">
+                            <h3 class="text-base font-semibold text-gray-900">Lista de Alunos & Presença</h3>
+                            <span id="data-hoje" class="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md">--</span>
+                        </div>
+
+                        <div id="container-alunos" class="space-y-3 mb-6">
+                            <!-- Os alunos serão injetados dinamicamente via JS -->
+                        </div>
+
+                        <button id="btn-finalizar-chamada" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow">
+                            <i class="ph ph-check-circle text-xl"></i> Salvar Chamada no Banco
+                        </button>
+                    </div>
+
+                    <!-- SEÇÃO DE HISTÓRICO DE CHAMADAS PASSADAS -->
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-base font-semibold text-gray-900">Histórico de Chamadas Realizadas</h3>
+                            <button onclick="carregarHistoricoChamadas()" class="text-xs text-gray-600 hover:bg-gray-100 px-2.5 py-1 rounded border transition-colors flex items-center gap-1">
+                                <i class="ph ph-arrow-counter-clockwise"></i> Atualizar
+                            </button>
+                        </div>
+                        <div id="container-historico" class="space-y-3 max-h-[300px] overflow-y-auto">
+                            <!-- Chamadas gravadas serão exibidas aqui -->
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- FIREBASE SDK & LÓGICA EM JAVASCRIPT MOUNT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, arrayUnion, arrayRemove, query, where, orderBy 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // =========================================================================
+        // CONFIGURAÇÃO DO SEU BANCO DE DADOS NO FIREBASE (SUAS CHAVES REAIS)
+        // =========================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBBYDC2a9N0WJ7JIumIwnFjBaaI_2B2jb8",
+            authDomain: "chamada-f70f7.firebaseapp.com",
+            projectId: "chamada-f70f7",
+            storageBucket: "chamada-f70f7.firebasestorage.app",
+            messagingSenderId: "549243579763",
+            appId: "1:549243579763:web:c2fe5b7adbbf576a836906",
+            measurementId: "G-R7E3YLNJND"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // VARIÁVEIS DE ESTADO
+        let currentUser = null;
+        let todasTurmas = [];
+        let currentTurmaId = null;
+        let mapaFaltasAlunos = {}; // Guarda a contagem { "NomeAluno": totalFaltas }
+
+        // UTILITÁRIO: NOTIFICAÇÃO TOAST
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toast-msg");
+            const toastIcon = document.getElementById("toast-icon");
+
+            toastMsg.innerText = msg;
+            if (type === "error") {
+                toast.className = toast.className.replace("bg-gray-900", "bg-red-600");
+                toastIcon.className = "ph ph-warning-circle text-lg";
+            } else {
+                toast.className = toast.className.replace("bg-red-600", "bg-gray-900");
+                toastIcon.className = "ph ph-check-circle text-lg";
+            }
+
+            toast.classList.remove("hidden");
+            setTimeout(() => toast.classList.add("hidden"), 3000);
+        }
+
+        // =========================================================================
+        // 1. GERENCIAMENTO DE AUTENTICAÇÃO (LOGIN / LOGOUT)
+        // =========================================================================
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('screen-auth').classList.add('hidden');
+                document.getElementById('screen-dashboard').classList.remove('hidden');
+                document.getElementById('user-display-email').innerText = user.email;
+                document.getElementById('data-hoje').innerText = new Date().toLocaleDateString('pt-BR');
+                carregarTurmas();
+            } else {
+                currentUser = null;
+                document.getElementById('screen-auth').classList.remove('hidden');
+                document.getElementById('screen-dashboard').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const senha = document.getElementById('login-senha').value;
+            const btn = document.getElementById('btn-login');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> Autenticando...';
+
+            try {
+                await signInWithEmailAndPassword(auth, email, senha);
+                showToast("Login realizado com sucesso!");
+            } catch (error) {
+                console.error(error);
+                showToast("Falha no login. Verifique e-mail e senha.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph ph-sign-in text-lg"></i> Entrar no Sistema';
+            }
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+
+        // =========================================================================
+        // 2. TURMAS: CRIAR, LISTAR E EXCLUIR
+        // =========================================================================
+        document.getElementById('form-criar-turma').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('input-nome-turma');
+            const nome = input.value.trim();
+            if (!nome) return;
+
+            try {
+                await addDoc(collection(db, "turmas"), {
+                    nome: nome,
+                    professorUid: currentUser.uid,
+                    alunos: [],
+                    criadoEm: new Date()
+                });
+                input.value = '';
+                showToast("Turma criada com sucesso!");
+                carregarTurmas();
+            } catch (error) {
+                console.error(error);
+                showToast("Erro ao criar turma.", "error");
+            }
+        });
+
+        async function carregarTurmas() {
+            const container = document.getElementById('lista-turmas');
+            try {
+                const q = query(collection(db, "turmas"), where("professorUid", "==", currentUser.uid));
+                const snapshot = await getDocs(q);
+                
+                todasTurmas = [];
+                snapshot.forEach(doc => {
+                    todasTurmas.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (todasTurmas.length === 0) {
+                    container.innerHTML = '<p class="text-sm text-gray-500 italic">Nenhuma turma cadastrada.</p>';
+                    return;
+                }
+
+                container.innerHTML = todasTurmas.map(t => `
+                    <button onclick="selecionarTurma('${t.id}')" class="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center justify-between ${currentTurmaId === t.id ? 'bg-blue-50 border-blue-500 font-semibold text-blue-700' : 'bg-white'}">
+                        <span class="truncate text-sm">${t.nome}</span>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">${(t.alunos || []).length} alunos</span>
+                    </button>
+                `).join('');
+
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = '<p class="text-sm text-red-500">Erro ao carregar turmas.</p>';
+            }
+        }
+
+        document.getElementById('btn-excluir-turma').addEventListener('click', async () => {
+            if (!currentTurmaId || !confirm("Tem certeza que deseja excluir esta turma e todas as suas informações?")) return;
+
+            try {
+                await deleteDoc(doc(db, "turmas", currentTurmaId));
+                showToast("Turma excluída!");
+                currentTurmaId = null;
+                document.getElementById('view-turma').classList.add('hidden');
+                document.getElementById('view-empty').classList.remove('hidden');
+                carregarTurmas();
+            } catch (error) {
+                console.error(error);
+                showToast("Erro ao excluir turma.", "error");
+            }
+        });
+
+        // =========================================================================
+        // 3. SELEÇÃO DE TURMA & CÁLCULO DE FALTAS POR ALUNO
+        // =========================================================================
+        window.selecionarTurma = async (turmaId) => {
+            currentTurmaId = turmaId;
+            const turma = todasTurmas.find(t => t.id === turmaId);
+            if (!turma) return;
+
+            document.getElementById('view-empty').classList.add('hidden');
+            document.getElementById('view-turma').classList.remove('hidden');
+            document.getElementById('turma-titulo').innerText = turma.nome;
+
+            // Recarrega destaque visual na lista de turmas
+            carregarTurmas();
+
+            // 1º Calcular Faltas dos Alunos a partir das chamadas registradas
+            await calcularFaltasTurma(turmaId);
+
+            // 2º Renderizar Alunos na Tela com o Contador de Faltas
+            renderizarAlunos(turma.alunos || []);
+
+            // 3º Carregar Histórico de Chamadas
+            carregarHistoricoChamadas();
+        };
+
+        async function calcularFaltasTurma(turmaId) {
+            mapaFaltasAlunos = {};
+            try {
+                const q = query(collection(db, "chamadas"), where("turmaId", "==", turmaId));
+                const snapshot = await getDocs(q);
+
+                snapshot.forEach(docSnap => {
+                    const chamada = docSnap.data();
+                    if (chamada.ausentes && Array.isArray(chamada.ausentes)) {
+                        chamada.ausentes.forEach(nomeAluno => {
+                            mapaFaltasAlunos[nomeAluno] = (mapaFaltasAlunos[nomeAluno] || 0) + 1;
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error("Erro ao calcular faltas:", error);
+            }
+        }
+
+        function renderizarAlunos(listaAlunos) {
+            const container = document.getElementById('container-alunos');
+
+            if (listaAlunos.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 italic py-4 text-center">Nenhum aluno cadastrado nesta turma ainda.</p>';
+                return;
+            }
+
+            container.innerHTML = listaAlunos.map((aluno, index) => {
+                const totalFaltas = mapaFaltasAlunos[aluno] || 0;
+                
+                // Define a cor de alerta para as faltas
+                let badgeFaltasClass = "bg-gray-100 text-gray-600";
+                if (totalFaltas > 4) badgeFaltasClass = "bg-red-100 text-red-700 font-bold";
+                else if (totalFaltas > 0) badgeFaltasClass = "bg-amber-100 text-amber-800";
+
+                return `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <label class="flex items-center gap-3 cursor-pointer flex-1">
+                            <input type="checkbox" id="aluno-${index}" data-nome="${aluno}" class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-gray-800">${aluno}</span>
+                        </label>
+
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs px-2.5 py-1 rounded-full ${badgeFaltasClass}">
+                                ${totalFaltas} ${totalFaltas === 1 ? 'falta' : 'faltas'}
+                            </span>
+                            <button onclick="removerAluno('${aluno}')" class="text-gray-400 hover:text-red-600 text-sm transition-colors p-1" title="Remover aluno">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // =========================================================================
+        // 4. GERENCIAMENTO DE ALUNOS (ADICIONAR / REMOVER)
+        // =========================================================================
+        document.getElementById('form-adicionar-aluno').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('input-nome-aluno');
+            const nomeAluno = input.value.trim();
+            if (!nomeAluno || !currentTurmaId) return;
+
+            try {
+                const turmaRef = doc(db, "turmas", currentTurmaId);
+                await updateDoc(turmaRef, {
+                    alunos: arrayUnion(nomeAluno)
+                });
+                input.value = '';
+                showToast("Aluno adicionado com sucesso!");
+                
+                // Recarrega os dados atualizados
+                const snapshot = await getDocs(query(collection(db, "turmas"), where("professorUid", "==", currentUser.uid)));
+                todasTurmas = [];
+                snapshot.forEach(d => todasTurmas.push({ id: d.id, ...d.data() }));
+                selecionarTurma(currentTurmaId);
+
+            } catch (error) {
+                console.error(error);
+                showToast("Erro ao adicionar aluno.", "error");
+            }
+        });
+
+        window.removerAluno = async (nomeAluno) => {
+            if (!currentTurmaId || !confirm(`Deseja remover ${nomeAluno} da turma?`)) return;
+
+            try {
+                const turmaRef = doc(db, "turmas", currentTurmaId);
+                await updateDoc(turmaRef, {
+                    alunos: arrayRemove(nomeAluno)
+                });
+                showToast("Aluno removido!");
+                
+                const snapshot = await getDocs(query(collection(db, "turmas"), where("professorUid", "==", currentUser.uid)));
+                todasTurmas = [];
+                snapshot.forEach(d => todasTurmas.push({ id: d.id, ...d.data() }));
+                selecionarTurma(currentTurmaId);
+
+            } catch (error) {
+                console.error(error);
+                showToast("Erro ao remover aluno.", "error");
+            }
+        };
+
+        // =========================================================================
+        // 5. SALVAR CHAMADA NO BANCO DE DADOS
+        // =========================================================================
+        document.getElementById('btn-finalizar-chamada').addEventListener('click', async () => {
+            if (!currentTurmaId) return;
+
+            const turma = todasTurmas.find(t => t.id === currentTurmaId);
+            if (!turma || !turma.alunos || turma.alunos.length === 0) {
+                showToast("A turma não possui alunos para chamada.", "error");
+                return;
+            }
+
+            const presentes = [];
+            const ausentes = [];
+
+            turma.alunos.forEach((aluno, index) => {
+                const checkbox = document.getElementById(`aluno-${index}`);
+                if (checkbox && checkbox.checked) {
+                    presentes.push(aluno);
+                } else {
+                    ausentes.push(aluno);
+                }
+            });
+
+            const btn = document.getElementById('btn-finalizar-chamada');
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Salvando chamada...';
+            btn.disabled = true;
+
+            try {
+                await addDoc(collection(db, "chamadas"), {
+                    turmaId: currentTurmaId,
+                    turmaNome: turma.nome,
+                    professorUid: currentUser.uid,
+                    dataIso: new Date().toISOString(),
+                    dataFormatada: new Date().toLocaleDateString('pt-BR'),
+                    presentes: presentes,
+                    ausentes: ausentes,
+                    criadoEm: new Date()
+                });
+
+                showToast("Chamada registrada com sucesso no banco!");
+                
+                // Recarrega as faltas dos alunos na tela e o histórico
+                await selecionarTurma(currentTurmaId);
+
+            } catch (error) {
+                console.error("Erro ao salvar chamada:", error);
+                showToast("Erro ao gravar chamada no banco de dados.", "error");
+            } finally {
+                btn.innerHTML = textoOriginal;
+                btn.disabled = false;
+            }
+        });
+
+        // =========================================================================
+        // 6. HISTÓRICO DE CHAMADAS
+        // =========================================================================
+        window.carregarHistoricoChamadas = async () => {
+            if (!currentTurmaId) return;
+
+            const container = document.getElementById('container-historico');
+            container.innerHTML = '<p class="text-xs text-gray-500">Buscando histórico...</p>';
+
+            try {
+                const q = query(
+                    collection(db, "chamadas"), 
+                    where("turmaId", "==", currentTurmaId)
+                );
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<p class="text-xs text-gray-500 italic py-2">Nenhuma chamada salva para esta turma.</p>';
+                    return;
+                }
+
+                let html = '';
+                snapshot.forEach(docSnap => {
+                    const c = docSnap.data();
+                    const qtdP = (c.presentes || []).length;
+                    const qtdA = (c.ausentes || []).length;
+
+                    html += `
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between text-xs">
+                            <div>
+                                <span class="font-semibold text-gray-800">${c.dataFormatada || 'Data não gravada'}</span>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="text-emerald-700 font-medium">✓ ${qtdP} Presentes</span>
+                                <span class="text-rose-700 font-medium">✗ ${qtdA} Ausentes</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = '<p class="text-xs text-red-500">Erro ao carregar histórico.</p>';
+            }
+        };
+
+    </script>
+</body>
+</html>
